@@ -296,7 +296,6 @@ def calc_arc(cp: Vector2d, r_i: Vector2d, ang, fa, fs, pos: Vector2d):
     Copyright (c) jm soler juillet/novembre 2004-april 2007,
     Resource: https://developer.mozilla.org/fr/docs/Web/SVG/Tutorial/Paths#elliptical_arc (in french)
     """
-    # print(ang)
     ang = radians(ang)
 
     r = Vector2d(abs(r_i.x), abs(r_i.y))
@@ -528,6 +527,7 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
 
         self.text_indent = TEXT_INDENT
         self.colors = []
+        self.gradient = {}
         self.color_code = ""
         self.gradient_code = ""
         self.output_code = ""
@@ -852,20 +852,70 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
 
     # return ""
 
-    # def _handle_gradient(self, gradient_ref):
-    # grad_node = self.get_node_from_id(gradient_ref)
-    # gradient_id = grad_node.get("id")
-    # if grad_node is None:
-    # return []
-    # gradient_tikzname = gradient_id
-    # if gradient_id not in self.used_gradients:
-    # grad_code = self._convert_gradient(grad_node, gradient_tikzname)
-    # if grad_code:
-    # self.gradient_code += grad_code
-    # self.used_gradients.add(gradient_id)
-    # if gradient_id in self.used_gradients:
-    # return ["shade", f"shading={gradient_tikzname}"]
-    # return []
+    def _handle_linear_gradient(self, grad):
+        """
+        Manage linear gradient
+
+        TODO
+        """
+
+        x1 = grad.get("x1", "0%")
+        y1 = grad.get("y1", "0%")
+        x2 = grad.get("x2", "100%")
+        y2 = grad.get("y2", "0%")
+
+        slope = degrees(atan2(float(y2) - float(y1), float(x2) - float(x1)))
+
+        if self.options.noreversey:
+            slope = -slope
+
+        grad_name = grad.get("id", "gradient")
+        print(grad_name)
+
+
+        stops = []
+        for stop in grad.stops:
+            pass
+            color_name = self.convert_color_to_tikz(stop.style.get_color("stop-color"))
+
+            stops.append((stop.offset, color_name))
+
+
+        self.gradient[grad_name] = stops
+
+        return [f"shading={grad_name}", f"shading angle={self.round_value(slope)}"]
+
+    def _handle_gradient(self, gradient_ref):
+        """
+        Manage gradient
+
+        TODO
+        """
+
+        grad = self.svg.getElementById(gradient_ref)
+
+        if grad is None:
+            return []
+
+
+        if "linearGradient" in grad.tag:
+            return self._handle_linear_gradient(grad)
+
+
+
+        # grad_node = self.get_node_from_id(gradient_ref)
+        # gradient_id = grad_node.get("id")
+        # if grad_node is None:
+        # return []
+        # gradient_tikzname = gradient_id
+        # if gradient_id not in self.used_gradients:
+        # grad_code = self._convert_gradient(grad_node, gradient_tikzname)
+        # if grad_code:
+        # self.gradient_code += grad_code
+        # self.used_gradients.add(gradient_id)
+        # if gradient_id in self.used_gradients:
+        # return ["shade", f"shading={gradient_tikzname}"]
+        # return []
 
     def _handle_markers(self, style):
         """
@@ -976,10 +1026,16 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
             else [("stroke", "draw"), ("fill", "fill")]
         ):
             value = style.get(use_path[0])
+
             if value != "none" and value is not None:
-                options.append(
-                    f"{use_path[1]}={self.convert_color_to_tikz(style.get_color(use_path[0]))}"
-                )
+                if "url(#" in value:
+                    # Gradient handling
+                    # options += self._handle_gradient(value[5:-1])
+                    options = self._handle_gradient(value)
+                else:
+                    options.append(
+                        f"{use_path[1]}={self.convert_color_to_tikz(style.get_color(use_path[0]))}"
+                    )
 
             if value is None and use_path[0] == "fill" and node.TAG in LIST_OF_SHAPES:
                 # svg shapes with no fill option should fill by black
@@ -1472,6 +1528,9 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
         string = ""
         for node in group:
             if not filter_tag(node):
+                continue
+
+            if node.TAG == "stop":
                 continue
 
             if node.TAG == "use":
