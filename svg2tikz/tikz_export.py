@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""\
+"""
 Convert SVG to TikZ/PGF commands for use with (La)TeX
 
 This script is an Inkscape extension for exporting from SVG to (La)TeX. The
@@ -404,7 +404,7 @@ def options_to_str(options: list) -> str:
 
 # pylint: disable=too-many-locals
 def get_text_latex(node: inkex.TextElement, sep="", insert_math_delim=False) -> str:
-    """
+    r"""
     Return the text content including tspans and their tail
 
     parameters
@@ -1432,7 +1432,7 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
         if mode == "raw":
             textstr = raw_textstr
         elif mode == "math":
-            textstr = f"\({raw_textstr}\)"
+            textstr = rf"\({raw_textstr}\)"
         else:
             textstr = escape_texchars(raw_textstr)
 
