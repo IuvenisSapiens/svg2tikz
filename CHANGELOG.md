@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Adding support for linear gradient
 ### Changed
 ### Deprecated
 ### Removed

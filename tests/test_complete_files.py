@@ -119,6 +119,11 @@ class TestCompleteFiles(unittest.TestCase):
         filename = "image"
         create_test_from_filename(filename, self)
 
+    def test_gradient(self):
+        """Test complete convert gradient"""
+        filename = "gradient"
+        create_test_from_filename(filename, self)
+
     def test_symbol_and_use(self):
         """Test complete convert symbol and use"""
         filename = "symbol_and_use"

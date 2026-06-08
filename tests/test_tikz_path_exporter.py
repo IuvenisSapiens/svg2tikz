@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Test TikZPathExporter class"""
-import unittest
 
-import sys
 import os
+import sys
+import unittest
 from io import StringIO
 
 # Use local svg2tikz version
@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + "/../")
 
 # pylint: disable=wrong-import-position
 from inkex.transforms import Vector2d
+
 from svg2tikz.tikz_export import TikZPathExporter
 from tests.common import SVG_4_RECT, SVG_EMPTY, SVG_TEXT
 
@@ -248,7 +249,6 @@ class TestTikZPathExporter(unittest.TestCase):
 
 \begin{document}
 
-
 \def \globalscale {0.800000}
 \begin{tikzpicture}[y=1mm, x=1mm, yscale=\globalscale,xscale=\globalscale, every node/.append style={scale=\globalscale}, inner sep=0pt, outer sep=0pt]
 
@@ -283,7 +283,6 @@ class TestTikZPathExporter(unittest.TestCase):
 
 \begin{document}
 \definecolor{navy}{RGB}{0,0,128}
-
 
 \def \globalscale {1.000000}
 \begin{tikzpicture}[y=1cm, x=1cm, yscale=\globalscale,xscale=\globalscale, every node/.append style={scale=\globalscale}, inner sep=0pt, outer sep=0pt]
