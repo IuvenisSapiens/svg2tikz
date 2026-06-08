@@ -832,7 +832,6 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
 
         stops = []
         for stop in grad.stops:
-            pass
             color_name = self.convert_color_to_tikz(stop.style.get_color("stop-color"))
 
             stops.append((stop.offset, color_name))
@@ -840,7 +839,7 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
         if len(stops) == 0:
             logging.warning("No color defined for gradient: %s", grad_name)
             return []
-        elif len(stops) == 1:
+        if len(stops) == 1:
             logging.warning("Only one color defined for gradient: %s.", grad_name)
         elif len(stops) > 2:
             logging.warning(
@@ -857,7 +856,7 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
     def _handle_gradient(self, gradient_ref) -> list:
         """
         Manage gradient and convert it to tikz code.
-        """"
+        """
 
         grad = self.svg.getElementById(gradient_ref)
 
@@ -984,14 +983,16 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
             if value != "none" and value is not None:
                 if "url(#" in value:
                     # Use only the first color of the gradient for the stroke, as tikz does not support gradient for stroke
-                    if use_path[0] == "stroke":
-                        ops = self._handle_gradient(value)
-                        for op in ops:
-                            if "color" in op:
-                                options.append("draw=" + op.split("=")[1])
-                                break
-                    else:
+
+                    if use_path[0] != "stroke":
                         options += self._handle_gradient(value)
+                        continue
+
+                    ops = self._handle_gradient(value)
+                    for op in ops:
+                        if "color" in op:
+                            options.append("draw=" + op.split("=")[1])
+                            break
                 else:
                     options.append(
                         f"{use_path[1]}={self.convert_color_to_tikz(style.get_color(use_path[0]))}"
