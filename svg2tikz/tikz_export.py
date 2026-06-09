@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""\
+"""
 Convert SVG to TikZ/PGF commands for use with (La)TeX
 
 This script is an Inkscape extension for exporting from SVG to (La)TeX. The
@@ -78,7 +78,7 @@ SPECIAL_TEX_CHARS_REPLACE = [
     r"\^{}",
     r"\&",
 ]
-_tex_charmap = dict(list(zip(SPECIAL_TEX_CHARS, SPECIAL_TEX_CHARS_REPLACE)))
+_TEX_CHARMAP = dict(list(zip(SPECIAL_TEX_CHARS, SPECIAL_TEX_CHARS_REPLACE)))
 
 
 def escape_texchars(input_string):
@@ -91,7 +91,7 @@ def escape_texchars(input_string):
     >>> escape_texchars('%{}_^\\$')
     '\\%\\{\\}\\_\\^{}$\\backslash$\\$'
     """
-    return "".join([_tex_charmap.get(c, c) for c in input_string])
+    return "".join([_TEX_CHARMAP.get(c, c) for c in input_string])
 
 
 def copy_to_clipboard(text):  # pragma: no cover
@@ -398,7 +398,7 @@ def options_to_str(options: list) -> str:
 
 # pylint: disable=too-many-locals
 def get_text_latex(node: inkex.TextElement, sep="", insert_math_delim=False) -> str:
-    """
+    r"""
     Return the text content including tspans and their tail
 
     parameters
@@ -463,7 +463,7 @@ def get_text_latex(node: inkex.TextElement, sep="", insert_math_delim=False) -> 
                 result.append("^{")
 
             if not inside_math and insert_math_delim:
-                closing_stack.append("}\)")
+                closing_stack.append(r"}\)")
             else:
                 closing_stack.append("}")
 
@@ -1446,7 +1446,7 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
         if mode == "raw":
             textstr = raw_textstr
         elif mode == "math":
-            textstr = f"\({raw_textstr}\)"
+            textstr = rf"\({raw_textstr}\)"
         else:
             textstr = escape_texchars(raw_textstr)
 
