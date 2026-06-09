@@ -21,20 +21,17 @@ __author__ = "Devillez Louis, Kjell Magne Fauske"
 __maintainer__ = "Deville Louis"
 __email__ = "louis.devillez@gmail.com"
 
-import sys
-
-from textwrap import wrap
 import codecs
-import io
-import os
-from subprocess import Popen, PIPE
-
-from math import sin, cos, atan2, radians, degrees
-from math import pi as mpi
-
-import logging
-
 import ctypes
+import io
+import logging
+import os
+import sys
+from math import atan2, cos, degrees, radians, sin
+from math import pi as mpi
+from subprocess import PIPE, Popen
+from textwrap import wrap
+
 import inkex
 from inkex.transforms import Vector2d
 from lxml import etree
@@ -216,7 +213,6 @@ STANDALONE_TEMPLATE = (
 %(svgpath)s%(cropcode)s
 \begin{document}
 %(colorcode)s
-%(gradientcode)s
 \def \globalscale {%(scale)f}
 \begin{tikzpicture}[y=1%(unit)s, x=1%(unit)s, yscale=%(ysign)s\globalscale,"""
     r"""xscale=\globalscale, every node/.append style={scale=\globalscale}, inner sep=0pt, outer sep=0pt]
@@ -229,7 +225,6 @@ STANDALONE_TEMPLATE = (
 FIG_TEMPLATE = (
     r"""
 %(colorcode)s
-%(gradientcode)s
 \def \globalscale {%(scale)f}
 \begin{tikzpicture}[y=1%(unit)s, x=1%(unit)s, yscale=%(ysign)s\globalscale,"""
     r"""xscale=\globalscale, every node/.append style={scale=\globalscale}, inner sep=0pt, outer sep=0pt]
@@ -296,7 +291,6 @@ def calc_arc(cp: Vector2d, r_i: Vector2d, ang, fa, fs, pos: Vector2d):
     Copyright (c) jm soler juillet/novembre 2004-april 2007,
     Resource: https://developer.mozilla.org/fr/docs/Web/SVG/Tutorial/Paths#elliptical_arc (in french)
     """
-    # print(ang)
     ang = radians(ang)
 
     r = Vector2d(abs(r_i.x), abs(r_i.y))
@@ -529,9 +523,7 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
         self.text_indent = TEXT_INDENT
         self.colors = []
         self.color_code = ""
-        self.gradient_code = ""
         self.output_code = ""
-        self.used_gradients = set()
         self.height = 0
         self.args_parsed = False
 
@@ -820,52 +812,63 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
             self.color_code += f"{color.red},{color.green},{color.blue}" + "}\n"
         return xcolorname
 
-    # def _convert_gradient(self, gradient_node, gradient_tikzname):
-    # """Convert an SVG gradient to a PGF gradient"""
+    def _handle_linear_gradient(self, grad) -> list:
+        """
+        Manage linear gradient and convert it to tikz code
+        """
 
-    # # http://www.w3.org/TR/SVG/pservers.html
-    # def bpunit(offset):
-    # bp_unit = ""
-    # if offset.endswith("%"):
-    # bp_unit = offset[0:-1]
-    # else:
-    # bp_unit = str(int(round((float(offset)) * 100)))
-    # return bp_unit
+        x1 = grad.get("x1", "0%")
+        y1 = grad.get("y1", "0%")
+        x2 = grad.get("x2", "100%")
+        y2 = grad.get("y2", "0%")
 
-    # if gradient_node.tag == _ns("linearGradient"):
-    # c = ""
-    # c += (
-    # r"\pgfdeclarehorizontalshading{"
-    # + f"{gradient_tikzname}"
-    # + "}{100bp}{\n"
-    # )
-    # stops = []
-    # for n in gradient_node:
-    # if n.tag == _ns("stop"):
-    # stops.append(
-    # f"color({bpunit(n.get('offset'))}pt)="
-    # f"({self.get_color(n.get('stop-color'))})"
-    # )
-    # c += ";".join(stops)
-    # c += "\n}\n"
-    # return c
+        slope = degrees(atan2(float(y2) - float(y1), float(x2) - float(x1)))
 
-    # return ""
+        if self.options.noreversey:
+            slope = -slope
+        slope += 90
 
-    # def _handle_gradient(self, gradient_ref):
-    # grad_node = self.get_node_from_id(gradient_ref)
-    # gradient_id = grad_node.get("id")
-    # if grad_node is None:
-    # return []
-    # gradient_tikzname = gradient_id
-    # if gradient_id not in self.used_gradients:
-    # grad_code = self._convert_gradient(grad_node, gradient_tikzname)
-    # if grad_code:
-    # self.gradient_code += grad_code
-    # self.used_gradients.add(gradient_id)
-    # if gradient_id in self.used_gradients:
-    # return ["shade", f"shading={gradient_tikzname}"]
-    # return []
+        grad_name = grad.get("id", "gradient")
+
+        stops = []
+        for stop in grad.stops:
+            color_name = self.convert_color_to_tikz(stop.style.get_color("stop-color"))
+
+            stops.append((stop.offset, color_name))
+
+        if len(stops) == 0:
+            logging.warning("No color defined for gradient: %s", grad_name)
+            return []
+        if len(stops) == 1:
+            logging.warning("Only one color defined for gradient: %s.", grad_name)
+        elif len(stops) > 2:
+            logging.warning(
+                "More than 2 colors defined for gradient: %s. Only the first and last color will be used.",
+                grad_name,
+            )
+
+        return [
+            f"left color={stops[0][1]}",
+            f"right color={stops[-1][1]}",
+            f"shading angle={self.round_value(slope)}",
+        ]
+
+    def _handle_gradient(self, gradient_ref) -> list:
+        """
+        Manage gradient and convert it to tikz code.
+        """
+
+        grad = self.svg.getElementById(gradient_ref)
+
+        if grad is None:
+            return []
+
+        if "linearGradient" in grad.tag:
+            return self._handle_linear_gradient(grad)
+
+        logging.warning("Gradient type not supported: %s. Ignoring", grad.tag)
+
+        return []
 
     def _handle_markers(self, style):
         """
@@ -976,10 +979,24 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
             else [("stroke", "draw"), ("fill", "fill")]
         ):
             value = style.get(use_path[0])
+
             if value != "none" and value is not None:
-                options.append(
-                    f"{use_path[1]}={self.convert_color_to_tikz(style.get_color(use_path[0]))}"
-                )
+                if "url(#" in value:
+                    # Use only the first color of the gradient for the stroke, as tikz does not support gradient for stroke
+
+                    if use_path[0] != "stroke":
+                        options += self._handle_gradient(value)
+                        continue
+
+                    ops = self._handle_gradient(value)
+                    for op in ops:
+                        if "color" in op:
+                            options.append("draw=" + op.split("=")[1])
+                            break
+                else:
+                    options.append(
+                        f"{use_path[1]}={self.convert_color_to_tikz(style.get_color(use_path[0]))}"
+                    )
 
             if value is None and use_path[0] == "fill" and node.TAG in LIST_OF_SHAPES:
                 # svg shapes with no fill option should fill by black
@@ -1096,7 +1113,7 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
 
                 tr.x *= self.options.scale
                 tr.y *= self.options.scale
-                options.append(f"cm={{ {a},{b},{c}" f",{d},{self.coord_to_tz(tr)}}}")
+                options.append(f"cm={{ {a},{b},{c},{d},{self.coord_to_tz(tr)}}}")
 
             # Not possible to get them directly
             # elif "skewX" in str(trans):
@@ -1317,10 +1334,7 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
                 else:
                     radi = f"{r.x} and {r.y}"
                 if ang != 0.0:
-                    s += (
-                        "{" + f"[rotate={ang}] arc({start_ang}"
-                        f":{end_ang}:{radi})" + "}"
-                    )
+                    s += "{" + f"[rotate={ang}] arc({start_ang}:{end_ang}:{radi})" + "}"
                 else:
                     s += f"arc({start_ang}:{end_ang}:{radi})"
             # Get the last position
@@ -1474,6 +1488,9 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
             if not filter_tag(node):
                 continue
 
+            if node.TAG == "stop":
+                continue
+
             if node.TAG == "use":
                 node = node.unlink()
 
@@ -1600,7 +1617,6 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
                 "unit": self.options.output_unit,
                 "ysign": "-" if self.options.noreversey else "",
                 "cropcode": cropcode,
-                "gradientcode": self.gradient_code,
                 "scale": self.options.scale,
                 "svgpath": (
                     "\\usetikzlibrary{{svg.path}}\n" if self.options.svg_paths else ""
@@ -1612,7 +1628,6 @@ class TikZPathExporter(inkex.Effect, inkex.EffectExtension):
                 "colorcode": self.color_code,
                 "unit": self.options.output_unit,
                 "ysign": "-" if self.options.noreversey else "",
-                "gradientcode": self.gradient_code,
                 "scale": self.options.scale,
             }
         else:
