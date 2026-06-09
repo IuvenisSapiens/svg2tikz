@@ -78,7 +78,7 @@ SPECIAL_TEX_CHARS_REPLACE = [
     r"\^{}",
     r"\&",
 ]
-_tex_charmap = dict(list(zip(SPECIAL_TEX_CHARS, SPECIAL_TEX_CHARS_REPLACE)))
+_TEX_CHARMAP = dict(list(zip(SPECIAL_TEX_CHARS, SPECIAL_TEX_CHARS_REPLACE)))
 
 
 def escape_texchars(input_string):
@@ -91,7 +91,7 @@ def escape_texchars(input_string):
     >>> escape_texchars('%{}_^\\$')
     '\\%\\{\\}\\_\\^{}$\\backslash$\\$'
     """
-    return "".join([_tex_charmap.get(c, c) for c in input_string])
+    return "".join([_TEX_CHARMAP.get(c, c) for c in input_string])
 
 
 def copy_to_clipboard(text):  # pragma: no cover
