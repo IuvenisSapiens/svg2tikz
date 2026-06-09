@@ -5,9 +5,11 @@
 ### Added
 - Adding support for linear gradient
 ### Changed
+- Upgrade version of doc packages
 ### Deprecated
 ### Removed
 ### Fixed
+- Fix issue with invalid escape sequence
 ### Security
 
 ## v3.3.4 - 29/11/2025

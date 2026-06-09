@@ -463,7 +463,7 @@ def get_text_latex(node: inkex.TextElement, sep="", insert_math_delim=False) -> 
                 result.append("^{")
 
             if not inside_math and insert_math_delim:
-                closing_stack.append("}\)")
+                closing_stack.append(r"}\)")
             else:
                 closing_stack.append("}")
 
